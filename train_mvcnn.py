@@ -18,8 +18,9 @@ parser.add_argument("-weight_decay", type=float, help="weight decay", default=0.
 parser.add_argument("-no_pretraining", dest='no_pretraining', action='store_true')
 parser.add_argument("-cnn_name", "--cnn_name", type=str, help="cnn model name", default="vgg11")
 parser.add_argument("-num_views", type=int, help="number of views", default=12)
-parser.add_argument("-train_path", type=str, default="modelnet40_images_new_12x/*/train")
-parser.add_argument("-val_path", type=str, default="modelnet40_images_new_12x/*/test")
+ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/ModelNet40/ModelNet40_Depth'
+parser.add_argument("-train_path", type=str, default=ROOTPATH+"/*/train")
+parser.add_argument("-val_path", type=str, default=ROOTPATH+"/*/test")
 parser.set_defaults(train=False)
 
 def create_folder(log_dir):
@@ -43,22 +44,22 @@ if __name__ == '__main__':
 
     # STAGE 1
     log_dir = args.name+'_stage_1'
-    create_folder(log_dir)
+    # create_folder(log_dir)
     cnet = SVCNN(args.name, nclasses=40, pretraining=pretraining, cnn_name=args.cnn_name)
 
-    optimizer = optim.Adam(cnet.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    
+    # optimizer = optim.Adam(cnet.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    #
     n_models_train = args.num_models*args.num_views
-
-    train_dataset = SingleImgDataset(args.train_path, scale_aug=False, rot_aug=False, num_models=n_models_train, num_views=args.num_views)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)
-
-    val_dataset = SingleImgDataset(args.val_path, scale_aug=False, rot_aug=False, test_mode=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
-    print('num_train_files: '+str(len(train_dataset.filepaths)))
-    print('num_val_files: '+str(len(val_dataset.filepaths)))
-    trainer = ModelNetTrainer(cnet, train_loader, val_loader, optimizer, nn.CrossEntropyLoss(), 'svcnn', log_dir, num_views=1)
-    trainer.train(30)
+    #
+    # train_dataset = SingleImgDataset(args.train_path, scale_aug=False, rot_aug=False, num_models=n_models_train, num_views=args.num_views)
+    # train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)
+    #
+    # val_dataset = SingleImgDataset(args.val_path, scale_aug=False, rot_aug=False, test_mode=True)
+    # val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
+    # print('num_train_files: '+str(len(train_dataset.filepaths)))
+    # print('num_val_files: '+str(len(val_dataset.filepaths)))
+    # trainer = ModelNetTrainer(cnet, train_loader, val_loader, optimizer, nn.CrossEntropyLoss(), 'svcnn', log_dir, num_views=1)
+    # trainer.train(30)
 
     # STAGE 2
     log_dir = args.name+'_stage_2'

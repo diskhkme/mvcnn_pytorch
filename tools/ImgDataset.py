@@ -30,6 +30,7 @@ class MultiviewImgDataset(torch.utils.data.Dataset):
         self.filepaths = []
         for i in range(len(self.classnames)):
             all_files = sorted(glob.glob(parent_dir+'/'+self.classnames[i]+'/'+set_+'/*.png'))
+            all_files = [file.replace('\\', '/') for file in all_files]
             ## Select subset for different number of views
             stride = int(12/self.num_views) # 12 6 4 3 2 1
             all_files = all_files[::stride]
@@ -103,6 +104,7 @@ class SingleImgDataset(torch.utils.data.Dataset):
         self.filepaths = []
         for i in range(len(self.classnames)):
             all_files = sorted(glob.glob(parent_dir+'/'+self.classnames[i]+'/'+set_+'/*shaded*.png'))
+            all_files = [file.replace('\\','/') for file in all_files]
             if num_models == 0:
                 # Use the whole dataset
                 self.filepaths.extend(all_files)
