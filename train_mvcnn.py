@@ -17,8 +17,8 @@ parser.add_argument("-bs", "--batchSize", type=int, help="Batch size for the sec
 parser.add_argument("-num_models", type=int, help="number of models per class", default=1000)
 parser.add_argument("-lr", type=float, help="learning rate", default=5e-5)
 parser.add_argument("-weight_decay", type=float, help="weight decay", default=0.0)
-parser.add_argument("-no_pretraining", dest='no_pretraining', action='store_false')
-parser.add_argument("-cnn_name", "--cnn_name", type=str, help="cnn model name", default="alexnet")
+parser.add_argument("-no_pretraining", dest='no_pretraining', action='store_true')
+parser.add_argument("-cnn_name", "--cnn_name", type=str, help="cnn model name", default="resnet34")
 parser.add_argument("-num_views", type=int, help="number of views", default=12)
 # ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/ModelNet40/ModelNet40_Depth'
 ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/SegmentedPointCloud/224_224_Depth'
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     n_models_train = args.num_models*args.num_views
 
     train_dataset = SingleImgDataset(args.train_path, scale_aug=False, rot_aug=False, num_models=n_models_train, num_views=args.num_views,KNU_data=args.KNU_Data)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=0)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)
 
     val_dataset = SingleImgDataset(args.val_path, scale_aug=False, rot_aug=False, test_mode=True,KNU_data=args.KNU_Data)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
@@ -75,10 +75,10 @@ if __name__ == '__main__':
 
     if(args.loss_type == 'focal_loss'):
         focal_loss = FocalLoss(gamma=2, alpha=0.25)
-        trainer = ModelNetTrainer(cnet, train_loader, val_loader, optimizer, focal_loss, 'svcnn', log_dir, num_views=1)
+        trainer = ModelNetTrainer(cnet, train_loader, val_loader, optimizer, focal_loss, 'svcnn', log_dir, num_views=1, nClasses=nclasses)
     else:
         trainer = ModelNetTrainer(cnet, train_loader, val_loader, optimizer, nn.CrossEntropyLoss(), 'svcnn', log_dir,
-                                  num_views=1)
+                                  num_views=1, nClasses=nclasses)
     trainer.train(30)
 
     # STAGE 2
@@ -99,9 +99,9 @@ if __name__ == '__main__':
 
     if(args.loss_type == 'focal_loss'):
         focal_loss = FocalLoss(gamma=2, alpha=0.25)
-        trainer = ModelNetTrainer(cnet_2, train_loader, val_loader, optimizer, focal_loss, 'mvcnn', log_dir, num_views=args.num_views)
+        trainer = ModelNetTrainer(cnet_2, train_loader, val_loader, optimizer, focal_loss, 'mvcnn', log_dir, num_views=args.num_views, nClasses=nclasses)
     else:
-        trainer = ModelNetTrainer(cnet_2, train_loader, val_loader, optimizer, nn.CrossEntropyLoss(), 'mvcnn', log_dir, num_views=args.num_views)
+        trainer = ModelNetTrainer(cnet_2, train_loader, val_loader, optimizer, nn.CrossEntropyLoss(), 'mvcnn', log_dir, num_views=args.num_views, nClasses=nclasses)
 
     trainer.train(30)
 
