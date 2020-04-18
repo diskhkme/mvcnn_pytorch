@@ -21,14 +21,20 @@ def flip(x, dim):
 
 class SVCNN(Model):
 
-    def __init__(self, name, nclasses=40, pretraining=True, cnn_name='vgg11'):
+    def __init__(self, name, nclasses=40, pretraining=True, cnn_name='vgg11', KNU_data=True):
         super(SVCNN, self).__init__(name)
 
-        self.classnames=['airplane','bathtub','bed','bench','bookshelf','bottle','bowl','car','chair',
-                         'cone','cup','curtain','desk','door','dresser','flower_pot','glass_box',
-                         'guitar','keyboard','lamp','laptop','mantel','monitor','night_stand',
-                         'person','piano','plant','radio','range_hood','sink','sofa','stairs',
-                         'stool','table','tent','toilet','tv_stand','vase','wardrobe','xbox']
+        if KNU_data:
+            self.classnames = ['BlindFlange', 'Cross', 'Elbow 90', 'Elbow non 90', 'Flange', 'Flange WN',
+                               'Olet', 'OrificeFlange', 'Pipe', 'Reducer CONC', 'Reducer ECC',
+                               'Reducer Insert', 'Safety Valve', 'Strainer', 'Tee', 'Tee RED',
+                               'Valve', 'Wye']
+        else:
+            self.classnames = ['airplane', 'bathtub', 'bed', 'bench', 'bookshelf', 'bottle', 'bowl', 'car', 'chair',
+                               'cone', 'cup', 'curtain', 'desk', 'door', 'dresser', 'flower_pot', 'glass_box',
+                               'guitar', 'keyboard', 'lamp', 'laptop', 'mantel', 'monitor', 'night_stand',
+                               'person', 'piano', 'plant', 'radio', 'range_hood', 'sink', 'sofa', 'stairs',
+                               'stool', 'table', 'tent', 'toilet', 'tv_stand', 'vase', 'wardrobe', 'xbox']
 
         self.nclasses = nclasses
         self.pretraining = pretraining
@@ -40,13 +46,13 @@ class SVCNN(Model):
         if self.use_resnet:
             if self.cnn_name == 'resnet18':
                 self.net = models.resnet18(pretrained=self.pretraining)
-                self.net.fc = nn.Linear(512,40)
+                self.net.fc = nn.Linear(512,nclasses)
             elif self.cnn_name == 'resnet34':
                 self.net = models.resnet34(pretrained=self.pretraining)
-                self.net.fc = nn.Linear(512,40)
+                self.net.fc = nn.Linear(512,nclasses)
             elif self.cnn_name == 'resnet50':
                 self.net = models.resnet50(pretrained=self.pretraining)
-                self.net.fc = nn.Linear(2048,40)
+                self.net.fc = nn.Linear(2048,nclasses)
         else:
             if self.cnn_name == 'alexnet':
                 self.net_1 = models.alexnet(pretrained=self.pretraining).features
@@ -58,7 +64,7 @@ class SVCNN(Model):
                 self.net_1 = models.vgg16(pretrained=self.pretraining).features
                 self.net_2 = models.vgg16(pretrained=self.pretraining).classifier
             
-            self.net_2._modules['6'] = nn.Linear(4096,40)
+            self.net_2._modules['6'] = nn.Linear(4096,nclasses)
 
     def forward(self, x):
         if self.use_resnet:
@@ -70,14 +76,20 @@ class SVCNN(Model):
 
 class MVCNN(Model):
 
-    def __init__(self, name, model, nclasses=40, cnn_name='vgg11', num_views=12):
+    def __init__(self, name, model, nclasses=40, cnn_name='vgg11', num_views=12, KNU_data=True):
         super(MVCNN, self).__init__(name)
 
-        self.classnames=['airplane','bathtub','bed','bench','bookshelf','bottle','bowl','car','chair',
-                         'cone','cup','curtain','desk','door','dresser','flower_pot','glass_box',
-                         'guitar','keyboard','lamp','laptop','mantel','monitor','night_stand',
-                         'person','piano','plant','radio','range_hood','sink','sofa','stairs',
-                         'stool','table','tent','toilet','tv_stand','vase','wardrobe','xbox']
+        if KNU_data:
+            self.classnames = ['BlindFlange', 'Cross', 'Elbow 90', 'Elbow non 90', 'Flange', 'Flange WN',
+                               'Olet', 'OrificeFlange', 'Pipe', 'Reducer CONC', 'Reducer ECC',
+                               'Reducer Insert', 'Safety Valve', 'Strainer', 'Tee', 'Tee RED',
+                               'Valve', 'Wye']
+        else:
+            self.classnames = ['airplane', 'bathtub', 'bed', 'bench', 'bookshelf', 'bottle', 'bowl', 'car', 'chair',
+                               'cone', 'cup', 'curtain', 'desk', 'door', 'dresser', 'flower_pot', 'glass_box',
+                               'guitar', 'keyboard', 'lamp', 'laptop', 'mantel', 'monitor', 'night_stand',
+                               'person', 'piano', 'plant', 'radio', 'range_hood', 'sink', 'sofa', 'stairs',
+                               'stool', 'table', 'tent', 'toilet', 'tv_stand', 'vase', 'wardrobe', 'xbox']
 
         self.nclasses = nclasses
         self.num_views = num_views

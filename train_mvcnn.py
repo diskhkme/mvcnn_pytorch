@@ -17,8 +17,8 @@ parser.add_argument("-bs", "--batchSize", type=int, help="Batch size for the sec
 parser.add_argument("-num_models", type=int, help="number of models per class", default=1000)
 parser.add_argument("-lr", type=float, help="learning rate", default=5e-5)
 parser.add_argument("-weight_decay", type=float, help="weight decay", default=0.0)
-parser.add_argument("-no_pretraining", dest='no_pretraining', action='store_true')
-parser.add_argument("-cnn_name", "--cnn_name", type=str, help="cnn model name", default="vgg11")
+parser.add_argument("-no_pretraining", dest='no_pretraining', action='store_false')
+parser.add_argument("-cnn_name", "--cnn_name", type=str, help="cnn model name", default="alexnet")
 parser.add_argument("-num_views", type=int, help="number of views", default=12)
 # ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/ModelNet40/ModelNet40_Depth'
 ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/SegmentedPointCloud/224_224_Depth'
@@ -40,7 +40,14 @@ def create_folder(log_dir):
         os.mkdir(log_dir)
 
 if __name__ == '__main__':
+
     args = parser.parse_args()
+
+    if args.KNU_Data == True:
+        nclasses = 18
+    else:
+        nclasses = 40
+
 
     pretraining = not args.no_pretraining
     log_dir = args.name
@@ -52,16 +59,16 @@ if __name__ == '__main__':
     # STAGE 1
     log_dir = args.name+'_stage_1'
     create_folder(log_dir)
-    cnet = SVCNN(args.name, nclasses=40, pretraining=pretraining, cnn_name=args.cnn_name)
+    cnet = SVCNN(args.name, nclasses=nclasses, pretraining=pretraining, cnn_name=args.cnn_name,KNU_data=args.KNU_Data)
 
     optimizer = optim.Adam(cnet.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     n_models_train = args.num_models*args.num_views
 
-    train_dataset = SingleImgDataset(args.train_path, scale_aug=False, rot_aug=False, num_models=n_models_train, num_views=args.num_views)
+    train_dataset = SingleImgDataset(args.train_path, scale_aug=False, rot_aug=False, num_models=n_models_train, num_views=args.num_views,KNU_data=args.KNU_Data)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=0)
 
-    val_dataset = SingleImgDataset(args.val_path, scale_aug=False, rot_aug=False, test_mode=True)
+    val_dataset = SingleImgDataset(args.val_path, scale_aug=False, rot_aug=False, test_mode=True,KNU_data=args.KNU_Data)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
     print('num_train_files: '+str(len(train_dataset.filepaths)))
     print('num_val_files: '+str(len(val_dataset.filepaths)))
@@ -77,15 +84,15 @@ if __name__ == '__main__':
     # STAGE 2
     log_dir = args.name+'_stage_2'
     create_folder(log_dir)
-    cnet_2 = MVCNN(args.name, cnet, nclasses=40, cnn_name=args.cnn_name, num_views=args.num_views)
+    cnet_2 = MVCNN(args.name, cnet, nclasses=nclasses, cnn_name=args.cnn_name, num_views=args.num_views,KNU_data=args.KNU_Data)
     del cnet
 
     optimizer = optim.Adam(cnet_2.parameters(), lr=args.lr, weight_decay=args.weight_decay, betas=(0.9, 0.999))
     
-    train_dataset = MultiviewImgDataset(args.train_path, scale_aug=False, rot_aug=False, num_models=n_models_train, num_views=args.num_views)
+    train_dataset = MultiviewImgDataset(args.train_path, scale_aug=False, rot_aug=False, num_models=n_models_train, num_views=args.num_views,KNU_data=args.KNU_Data)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batchSize, shuffle=False, num_workers=0)# shuffle needs to be false! it's done within the trainer
 
-    val_dataset = MultiviewImgDataset(args.val_path, scale_aug=False, rot_aug=False, num_views=args.num_views)
+    val_dataset = MultiviewImgDataset(args.val_path, scale_aug=False, rot_aug=False, num_views=args.num_views,KNU_data=args.KNU_Data)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batchSize, shuffle=False, num_workers=0)
     print('num_train_files: '+str(len(train_dataset.filepaths)))
     print('num_val_files: '+str(len(val_dataset.filepaths)))
