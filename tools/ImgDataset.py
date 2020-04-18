@@ -13,12 +13,18 @@ import random
 class MultiviewImgDataset(torch.utils.data.Dataset):
 
     def __init__(self, root_dir, scale_aug=False, rot_aug=False, test_mode=False, \
-                 num_models=0, num_views=12, shuffle=True):
-        self.classnames=['airplane','bathtub','bed','bench','bookshelf','bottle','bowl','car','chair',
-                         'cone','cup','curtain','desk','door','dresser','flower_pot','glass_box',
-                         'guitar','keyboard','lamp','laptop','mantel','monitor','night_stand',
-                         'person','piano','plant','radio','range_hood','sink','sofa','stairs',
-                         'stool','table','tent','toilet','tv_stand','vase','wardrobe','xbox']
+                 num_models=0, num_views=12, shuffle=True, KNU_data=True):
+        if KNU_data:
+            self.classnames = ['BlindFlange', 'Cross', 'Elbow 90', 'Elbow non 90', 'Flange', 'Flange WN',
+                               'Olet', 'OrificeFlange', 'Pipe', 'Reducer CONC', 'Reducer ECC',
+                               'Reducer Insert', 'Safety Valve', 'Strainer', 'Tee', 'Tee RED',
+                               'Valve', 'Wye']
+        else:
+            self.classnames=['airplane','bathtub','bed','bench','bookshelf','bottle','bowl','car','chair',
+                             'cone','cup','curtain','desk','door','dresser','flower_pot','glass_box',
+                             'guitar','keyboard','lamp','laptop','mantel','monitor','night_stand',
+                             'person','piano','plant','radio','range_hood','sink','sofa','stairs',
+                             'stool','table','tent','toilet','tv_stand','vase','wardrobe','xbox']
         self.root_dir = root_dir
         self.scale_aug = scale_aug
         self.rot_aug = rot_aug
@@ -29,8 +35,13 @@ class MultiviewImgDataset(torch.utils.data.Dataset):
         parent_dir = root_dir.rsplit('/',2)[0]
         self.filepaths = []
         for i in range(len(self.classnames)):
-            all_files = sorted(glob.glob(parent_dir+'/'+self.classnames[i]+'/'+set_+'/*.png'))
-            all_files = [file.replace('\\', '/') for file in all_files]
+            if KNU_data:
+                all_files = sorted(glob.glob(parent_dir + '/' + self.classnames[i] + '/' + set_ + '/*_v*.png'))
+                all_files = [file.replace('\\', '/') for file in all_files]
+            else:
+                all_files = sorted(glob.glob(parent_dir + '/' + self.classnames[i] + '/' + set_ + '/*shaded*.png'))
+                all_files = [file.replace('\\', '/') for file in all_files]
+
             ## Select subset for different number of views
             stride = int(12/self.num_views) # 12 6 4 3 2 1
             all_files = all_files[::stride]
@@ -88,12 +99,18 @@ class MultiviewImgDataset(torch.utils.data.Dataset):
 class SingleImgDataset(torch.utils.data.Dataset):
 
     def __init__(self, root_dir, scale_aug=False, rot_aug=False, test_mode=False, \
-                 num_models=0, num_views=12):
-        self.classnames=['airplane','bathtub','bed','bench','bookshelf','bottle','bowl','car','chair',
-                         'cone','cup','curtain','desk','door','dresser','flower_pot','glass_box',
-                         'guitar','keyboard','lamp','laptop','mantel','monitor','night_stand',
-                         'person','piano','plant','radio','range_hood','sink','sofa','stairs',
-                         'stool','table','tent','toilet','tv_stand','vase','wardrobe','xbox']
+                 num_models=0, num_views=12, KNU_data=True):
+        if KNU_data:
+            self.classnames = ['BlindFlange', 'Cross', 'Elbow 90', 'Elbow non 90', 'Flange', 'Flange WN',
+                               'Olet', 'OrificeFlange', 'Pipe', 'Reducer CONC', 'Reducer ECC',
+                               'Reducer Insert', 'Safety Valve', 'Strainer', 'Tee', 'Tee RED',
+                               'Valve', 'Wye']
+        else:
+            self.classnames=['airplane','bathtub','bed','bench','bookshelf','bottle','bowl','car','chair',
+                             'cone','cup','curtain','desk','door','dresser','flower_pot','glass_box',
+                             'guitar','keyboard','lamp','laptop','mantel','monitor','night_stand',
+                             'person','piano','plant','radio','range_hood','sink','sofa','stairs',
+                             'stool','table','tent','toilet','tv_stand','vase','wardrobe','xbox']
         self.root_dir = root_dir
         self.scale_aug = scale_aug
         self.rot_aug = rot_aug
@@ -103,8 +120,13 @@ class SingleImgDataset(torch.utils.data.Dataset):
         parent_dir = root_dir.rsplit('/',2)[0]
         self.filepaths = []
         for i in range(len(self.classnames)):
-            all_files = sorted(glob.glob(parent_dir+'/'+self.classnames[i]+'/'+set_+'/*shaded*.png'))
-            all_files = [file.replace('\\','/') for file in all_files]
+            if KNU_data:
+                all_files = sorted(glob.glob(parent_dir + '/' + self.classnames[i] + '/' + set_ + '/*_v*.png'))
+                all_files = [file.replace('\\', '/') for file in all_files]
+            else:
+                all_files = sorted(glob.glob(parent_dir+'/'+self.classnames[i]+'/'+set_+'/*shaded*.png'))
+                all_files = [file.replace('\\','/') for file in all_files]
+
             if num_models == 0:
                 # Use the whole dataset
                 self.filepaths.extend(all_files)
