@@ -23,12 +23,13 @@ class ModelNetTrainer(object):
         self.num_views = num_views
         self.nClasses = nClasses
 
+
         self.model.cuda()
         if self.log_dir is not None:
             self.writer = SummaryWriter(log_dir)
 
 
-    def train(self, n_epochs):
+    def train(self, n_epochs, multiGPU):
 
         best_acc = 0
         i_acc = 0
@@ -83,7 +84,7 @@ class ModelNetTrainer(object):
             # evaluation
             if (epoch+1)%1==0:
                 with torch.no_grad():
-                    loss, val_overall_acc, val_mean_class_acc = self.update_validation_accuracy(epoch)
+                    loss, val_overall_acc, val_mean_class_acc = self.update_validation_accuracy(epoch, multiGPU)
                 self.writer.add_scalar('val/val_mean_class_acc', val_mean_class_acc, epoch+1)
                 self.writer.add_scalar('val/val_overall_acc', val_overall_acc, epoch+1)
                 self.writer.add_scalar('val/val_loss', loss, epoch+1)
@@ -91,7 +92,10 @@ class ModelNetTrainer(object):
             # save best model
             if val_overall_acc > best_acc:
                 best_acc = val_overall_acc
-                self.model.save(self.log_dir, epoch)
+                if multiGPU:
+                    self.model.module.save(self.log_dir, epoch)
+                else:
+                    self.model.save(self.log_dir, epoch)
  
             # adjust learning rate manually
             if epoch > 0 and (epoch+1) % 10 == 0:
@@ -102,7 +106,7 @@ class ModelNetTrainer(object):
         self.writer.export_scalars_to_json(self.log_dir+"/all_scalars.json")
         self.writer.close()
 
-    def update_validation_accuracy(self, epoch):
+    def update_validation_accuracy(self, epoch,multiGPU):
         all_correct_points = 0
         all_points = 0
 
@@ -132,7 +136,11 @@ class ModelNetTrainer(object):
                 in_data = Variable(data[1]).cuda()
             target = Variable(data[0]).cuda()
 
-            out_data = self.model(in_data)
+            if multiGPU:
+                out_data = self.model.modules(in_data)
+            else:
+                out_data = self.model(in_data)
+
             pred = torch.max(out_data, 1)[1]
             all_loss += self.loss_fn(out_data, target).cpu().data.numpy()
             results = pred == target

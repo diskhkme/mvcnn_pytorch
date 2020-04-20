@@ -12,21 +12,27 @@ from models.MVCNN import MVCNN, SVCNN
 from tools.focalloss import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-name", "--name", type=str, help="Name of the experiment", default="MVCNN")
+parser.add_argument("-name", "--name", type=str, help="Name of the experiment", default="Vgg11_Seg_white")
 parser.add_argument("-bs", "--batchSize", type=int, help="Batch size for the second stage", default=8)# it will be *12 images in each batch for mvcnn
 parser.add_argument("-num_models", type=int, help="number of models per class", default=1000)
 parser.add_argument("-lr", type=float, help="learning rate", default=5e-5)
 parser.add_argument("-weight_decay", type=float, help="weight decay", default=0.0)
 parser.add_argument("-no_pretraining", dest='no_pretraining', action='store_true')
-parser.add_argument("-cnn_name", "--cnn_name", type=str, help="cnn model name", default="resnet34")
+parser.add_argument("-cnn_name", "--cnn_name", type=str, help="cnn model name", default="vgg11")
 parser.add_argument("-num_views", type=int, help="number of views", default=12)
-# ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/ModelNet40/ModelNet40_Depth'
-ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/SegmentedPointCloud/224_224_Depth'
+# ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/ModelNet40/ModelNet40_Depth' # ModelNet Depth
+# ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/SegmentedPointCloud/224_224_Depth # 기존 Depth
+ROOTPATH = 'D:/KHK/Data/SegmentedPointCloud/SegmentedPointCloud/224_224_Depth_White' # ModelNet과 동일하게 배경 흰 Depth
 parser.add_argument("-train_path", type=str, default=ROOTPATH+"/*/train")
 parser.add_argument("-val_path", type=str, default=ROOTPATH+"/*/test")
 
-parser.add_argument("-loss_type", type=str, default='crossent') # 'focal_loss' or else
 parser.add_argument("-KNU_Data", type=bool, default=True)
+parser.add_argument("-loss_type", type=str, default='cross_val') # 'focal_loss' or else
+
+parser.add_argument("-use_encdec", type=bool, default=False)
+parser.add_argument("-encdec_name", type=str, default='alexnet')
+parser.add_argument("-encdim", type=int, default=4096) # 현재 사용 안함
+
 
 parser.set_defaults(train=False)
 
@@ -48,6 +54,7 @@ if __name__ == '__main__':
     else:
         nclasses = 40
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     pretraining = not args.no_pretraining
     log_dir = args.name
@@ -59,7 +66,13 @@ if __name__ == '__main__':
     # STAGE 1
     log_dir = args.name+'_stage_1'
     create_folder(log_dir)
-    cnet = SVCNN(args.name, nclasses=nclasses, pretraining=pretraining, cnn_name=args.cnn_name,KNU_data=args.KNU_Data)
+    cnet = SVCNN(args.name, nclasses=nclasses, pretraining=pretraining, cnn_name=args.cnn_name,KNU_data=args.KNU_Data,
+                 use_encdec=args.use_encdec, encdec_name=args.encdec_name, encdim=args.encdim)
+
+    use_dataparallel = False
+    if use_dataparallel:
+        cnet = nn.DataParallel(cnet)
+        cnet.to(device)
 
     optimizer = optim.Adam(cnet.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -79,13 +92,27 @@ if __name__ == '__main__':
     else:
         trainer = ModelNetTrainer(cnet, train_loader, val_loader, optimizer, nn.CrossEntropyLoss(), 'svcnn', log_dir,
                                   num_views=1, nClasses=nclasses)
-    trainer.train(30)
+    trainer.train(30, use_dataparallel)
 
     # STAGE 2
+    ### -----------------------stage 2부터 시작할 때만 필요한 코드!---------------------------------------------
+    if use_dataparallel == True:
+        cnet.module.load_state_dict(torch.load("Vgg11_Seg_white_stage_1/Vgg11_Seg_white/model-00023.pth"))
+        cnet.module.eval()
+    else:
+        cnet.load_state_dict(torch.load("Vgg11_Seg_white_stage_1/Vgg11_Seg_white/model-00023.pth"))
+        cnet.eval()
+    ### -----------------------stage 2부터 시작할 때만 필요한 코드!---------------------------------------------
+
     log_dir = args.name+'_stage_2'
     create_folder(log_dir)
-    cnet_2 = MVCNN(args.name, cnet, nclasses=nclasses, cnn_name=args.cnn_name, num_views=args.num_views,KNU_data=args.KNU_Data)
+    cnet_2 = MVCNN(args.name, cnet, nclasses=nclasses, cnn_name=args.cnn_name, num_views=args.num_views,KNU_data=args.KNU_Data,
+                 use_encdec=args.use_encdec, encdec_name=args.encdec_name, encdim=args.encdim, use_dataparallel=use_dataparallel)
     del cnet
+
+    if use_dataparallel:
+        cnet_2 = nn.DataParallel(cnet_2)
+        cnet_2.to(device)
 
     optimizer = optim.Adam(cnet_2.parameters(), lr=args.lr, weight_decay=args.weight_decay, betas=(0.9, 0.999))
     
@@ -103,6 +130,6 @@ if __name__ == '__main__':
     else:
         trainer = ModelNetTrainer(cnet_2, train_loader, val_loader, optimizer, nn.CrossEntropyLoss(), 'mvcnn', log_dir, num_views=args.num_views, nClasses=nclasses)
 
-    trainer.train(30)
+    trainer.train(30, use_dataparallel)
 
 

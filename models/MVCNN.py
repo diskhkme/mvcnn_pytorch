@@ -21,7 +21,7 @@ def flip(x, dim):
 
 class SVCNN(Model):
 
-    def __init__(self, name, nclasses=40, pretraining=True, cnn_name='vgg11', KNU_data=True):
+    def __init__(self, name, nclasses=40, pretraining=True, cnn_name='vgg11', KNU_data=True, use_encdec=False, encdec_name='alexnet', encdim=4096):
         super(SVCNN, self).__init__(name)
 
         if KNU_data:
@@ -39,9 +39,29 @@ class SVCNN(Model):
         self.nclasses = nclasses
         self.pretraining = pretraining
         self.cnn_name = cnn_name
+        self.use_encdec = use_encdec
+        self.encdec_name = encdec_name
+        self.encdim = encdim
         self.use_resnet = cnn_name.startswith('resnet')
         self.mean = Variable(torch.FloatTensor([0.485, 0.456, 0.406]), requires_grad=False).cuda()
         self.std = Variable(torch.FloatTensor([0.229, 0.224, 0.225]), requires_grad=False).cuda()
+
+        if self.use_encdec:
+            if self.encdec_name == 'alexnet':
+                self.encnet = models.alexnet().features
+                # 6x6x256 to 224x224x3
+                self.decnet = nn.Sequential(
+                    nn.ConvTranspose2d(256, 256, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(256, 384, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(384, 192, kernel_size=5, stride=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(192, 64, kernel_size=9, stride=3, padding=2),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(64, 3, kernel_size=10, stride=4, padding=3),
+                    nn.ReLU(inplace=True)
+                )
 
         if self.use_resnet:
             if self.cnn_name == 'resnet18':
@@ -67,6 +87,10 @@ class SVCNN(Model):
             self.net_2._modules['6'] = nn.Linear(4096,nclasses)
 
     def forward(self, x):
+        if self.use_encdec:
+            x = self.encnet(x)
+            x = self.decnet(x)
+
         if self.use_resnet:
             return self.net(x)
         else:
@@ -76,7 +100,7 @@ class SVCNN(Model):
 
 class MVCNN(Model):
 
-    def __init__(self, name, model, nclasses=40, cnn_name='vgg11', num_views=12, KNU_data=True):
+    def __init__(self, name, model, nclasses, cnn_name, num_views, KNU_data, use_encdec, encdec_name, encdim, use_dataparallel):
         super(MVCNN, self).__init__(name)
 
         if KNU_data:
@@ -93,19 +117,38 @@ class MVCNN(Model):
 
         self.nclasses = nclasses
         self.num_views = num_views
+        self.use_encdec = use_encdec
+        self.encdec_name = encdec_name
+        self.encdim = encdim
         self.mean = Variable(torch.FloatTensor([0.485, 0.456, 0.406]), requires_grad=False).cuda()
         self.std = Variable(torch.FloatTensor([0.229, 0.224, 0.225]), requires_grad=False).cuda()
 
         self.use_resnet = cnn_name.startswith('resnet')
 
+        if self.use_encdec:
+            if use_dataparallel == True:
+                self.encnet = model.modules.encnet
+                self.decnet = model.modules.decnet
+            else:
+                self.encnet = model.encnet
+                self.decnet = model.decnet
+
         if self.use_resnet:
             self.net_1 = nn.Sequential(*list(model.net.children())[:-1])
             self.net_2 = model.net.fc
         else:
-            self.net_1 = model.net_1
-            self.net_2 = model.net_2
+            if use_dataparallel == True:
+                self.net_1 = model.module.net_1
+                self.net_2 = model.module.net_2
+            else:
+                self.net_1 = model.net_1
+                self.net_2 = model.net_2
 
     def forward(self, x):
+        if self.use_encdec:
+            x = self.encnet(x)
+            x = self.decnet(x)
+
         y = self.net_1(x)
         y = y.view((int(x.shape[0]/self.num_views),self.num_views,y.shape[-3],y.shape[-2],y.shape[-1]))#(8,12,512,7,7)
         return self.net_2(torch.max(y,1)[0].view(y.shape[0],-1))
