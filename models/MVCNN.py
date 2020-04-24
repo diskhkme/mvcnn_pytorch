@@ -47,9 +47,45 @@ class SVCNN(Model):
         self.std = Variable(torch.FloatTensor([0.229, 0.224, 0.225]), requires_grad=False).cuda()
 
         if self.use_encdec:
+            if self.encdec_name == 'simpleNet':
+                self.encnet = nn.Sequential(
+                    nn.Conv2d(3, 64, kernel_size=5, padding=2),
+                    nn.ReLU(inplace=True),
+                    nn.MaxPool2d(kernel_size=3, stride=2),
+                    nn.Conv2d(64, 128, kernel_size=5, padding=2),
+                    nn.ReLU(inplace=True),
+                    nn.MaxPool2d(kernel_size=3, stride=2),
+                    nn.Conv2d(128, 256, kernel_size=5, padding=2),
+                    nn.ReLU(inplace=True),
+                    nn.MaxPool2d(kernel_size=3, stride=2),
+                )
+                self.decnet = nn.Sequential(
+                    nn.ConvTranspose2d(256, 128, kernel_size=7, stride= 2, padding=2),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(128, 64, kernel_size=7, stride= 2, padding=2),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(64, 3, kernel_size=6, stride=2, padding=1),
+                    nn.ReLU(inplace=True),
+                )
+
             if self.encdec_name == 'alexnet':
                 self.encnet = models.alexnet().features
-                # 6x6x256 to 224x224x3
+                # (6x6x256 to 224x224x3)
+                self.decnet = nn.Sequential(
+                    nn.ConvTranspose2d(256, 256, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(256, 384, kernel_size=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(384, 192, kernel_size=5, stride=3, padding=1),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(192, 64, kernel_size=9, stride=3, padding=2),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(64, 3, kernel_size=10, stride=4, padding=3),
+                    nn.ReLU(inplace=True)
+                )
+            if self.encdec_name == 'vgg11':
+                self.encnet = models.alexnet().features
+                # (6x6x256 to 224x224x3)
                 self.decnet = nn.Sequential(
                     nn.ConvTranspose2d(256, 256, kernel_size=3, padding=1),
                     nn.ReLU(inplace=True),

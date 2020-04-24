@@ -8,12 +8,14 @@ from PIL import Image
 import torch
 import torchvision as vision
 from torchvision import transforms, datasets
+from tools.augmentation import RandomRemoval
 import random
 
 class MultiviewImgDataset(torch.utils.data.Dataset):
 
     def __init__(self, root_dir, scale_aug=False, rot_aug=False, test_mode=False, \
-                 num_models=0, num_views=12, shuffle=True, KNU_data=True):
+                 num_models=0, num_views=12, shuffle=True, KNU_data=True,
+                 pixel_augmentation=False):
         if KNU_data:
             self.classnames = ['BlindFlange', 'Cross', 'Elbow 90', 'Elbow non 90', 'Flange', 'Flange WN',
                                'Olet', 'OrificeFlange', 'Pipe', 'Reducer CONC', 'Reducer ECC',
@@ -68,12 +70,21 @@ class MultiviewImgDataset(torch.utils.data.Dataset):
                                      std=[0.229, 0.224, 0.225])
             ])    
         else:
-            self.transform = transforms.Compose([
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-            ])
+            if pixel_augmentation == False:
+                self.transform = transforms.Compose([
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    RandomRemoval(),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+                ])
 
 
     def __len__(self):
@@ -99,7 +110,7 @@ class MultiviewImgDataset(torch.utils.data.Dataset):
 class SingleImgDataset(torch.utils.data.Dataset):
 
     def __init__(self, root_dir, scale_aug=False, rot_aug=False, test_mode=False, \
-                 num_models=0, num_views=12, KNU_data=True):
+                 num_models=0, num_views=12, KNU_data=True,pixel_augmentation=False):
         if KNU_data:
             self.classnames = ['BlindFlange', 'Cross', 'Elbow 90', 'Elbow non 90', 'Flange', 'Flange WN',
                                'Olet', 'OrificeFlange', 'Pipe', 'Reducer CONC', 'Reducer ECC',
@@ -133,12 +144,21 @@ class SingleImgDataset(torch.utils.data.Dataset):
             else:
                 self.filepaths.extend(all_files[:min(num_models,len(all_files))])
 
-        self.transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
+        if pixel_augmentation == False:
+            self.transform = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+            ])
+        else:
+            self.transform = transforms.Compose([
+                RandomRemoval(),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+            ])
 
 
     def __len__(self):
